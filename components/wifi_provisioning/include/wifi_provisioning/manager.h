@@ -310,6 +310,52 @@ esp_err_t wifi_prov_mgr_start_provisioning(wifi_prov_security_t security, const 
                                            const char *service_name, const char *service_key);
 
 /**
+ * @brief   Start provisioning service
+ *
+ * Same as wifi_prov_mgr_start_provisioning except that wifi is not disconnected
+ * until someone connects using ble. This allows wifi reconnection to be possible
+ * as well as provisioning to a new AP.
+ *
+ * This starts the provisioning service according to the scheme
+ * configured at the time of initialization. For scheme :
+ * - wifi_prov_scheme_ble : This starts protocomm_ble, which internally initializes
+ *                          BLE transport and starts GATT server for handling
+ *                          provisioning requests
+ * - wifi_prov_scheme_softap : This activates SoftAP mode of Wi-Fi and starts
+ *                          protocomm_httpd, which internally starts an HTTP
+ *                          server for handling provisioning requests (If mDNS is
+ *                          active it also starts advertising service with type
+ *                          _esp_wifi_prov._tcp)
+ *
+ * Event WIFI_PROV_START is emitted right after provisioning starts without failure
+ *
+ * @note   This API will start provisioning service even if device is found to be
+ *         already provisioned, i.e. wifi_prov_mgr_is_provisioned() yields true
+ *
+ * @param[in] security      Specify which protocomm security scheme to use :
+ *                              - WIFI_PROV_SECURITY_0 : For no security
+ *                              - WIFI_PROV_SECURITY_1 : x25519 secure handshake for session
+ *                                establishment followed by AES-CTR encryption of provisioning messages
+ * @param[in] pop           Pointer to proof of possession string (NULL if not needed). This
+ *                          is relevant only for protocomm security 1, in which case it is used
+ *                          for authenticating secure session
+ * @param[in] service_name  Unique name of the service. This translates to:
+ *                              - Wi-Fi SSID when provisioning mode is softAP
+ *                              - Device name when provisioning mode is BLE
+ * @param[in] service_key   Key required by client to access the service (NULL if not needed).
+ *                          This translates to:
+ *                              - Wi-Fi password when provisioning mode is softAP
+ *                              - ignored when provisioning mode is BLE
+ *
+ * @return
+ *  - ESP_OK      : Provisioning started successfully
+ *  - ESP_FAIL    : Failed to start provisioning service
+ *  - ESP_ERR_INVALID_STATE : Provisioning manager not initialized or already started
+ */
+esp_err_t wifi_prov_mgr_start_provisioning_delay_wifi_disconnect(wifi_prov_security_t security, const char *pop,
+                                           const char *service_name, const char *service_key);
+
+/**
  * @brief   Stop provisioning service
  *
  * If provisioning service is active, this API will initiate a process to stop
