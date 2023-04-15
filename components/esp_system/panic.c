@@ -73,11 +73,19 @@ static wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
 #if CONFIG_ESP_CONSOLE_UART
 static uart_hal_context_t s_panic_uart = { .dev = CONFIG_ESP_CONSOLE_UART_NUM == 0 ? &UART0 :&UART1 };
 
+void panic_print_char_buff(const char c);
+
 void panic_print_char(const char c)
 {
     uint32_t sz = 0;
     while (!uart_hal_get_txfifo_len(&s_panic_uart));
     uart_hal_write_txfifo(&s_panic_uart, (uint8_t *) &c, 1, &sz);
+}
+
+void panic_print_char_dual(const char c)
+{
+	panic_print_char(c);
+	panic_print_char_buff(c);
 }
 #endif // CONFIG_ESP_CONSOLE_UART
 
@@ -125,6 +133,13 @@ void panic_print_str(const char *str)
     }
 }
 
+void panic_print_str_dual(const char *str)
+{
+    for (int i = 0; str[i] != 0; i++) {
+        panic_print_char_dual(str[i]);
+    }
+}
+
 void panic_print_hex(int h)
 {
     int x;
@@ -136,6 +151,22 @@ void panic_print_hex(int h)
             panic_print_char('0' + c);
         } else {
             panic_print_char('a' + c - 10);
+        }
+        h <<= 4; // move the 2nd leftmost byte to the left, to be extracted next
+    }
+}
+
+void panic_print_hex_dual(int h)
+{
+    int x;
+    int c;
+    // Does not print '0x', only the digits (8 digits to print)
+    for (x = 0; x < 8; x++) {
+        c = (h >> 28) & 0xf; // extract the leftmost byte
+        if (c < 10) {
+            panic_print_char_dual('0' + c);
+        } else {
+            panic_print_char_dual('a' + c - 10);
         }
         h <<= 4; // move the 2nd leftmost byte to the left, to be extracted next
     }
@@ -153,6 +184,20 @@ void panic_print_dec(int d)
         panic_print_char(n2 + '0');
     }
     panic_print_char(n1 + '0');
+}
+
+void panic_print_dec_dual(int d)
+{
+    // can print at most 2 digits!
+    int n1, n2;
+    n1 = d % 10; // extract ones digit
+    n2 = d / 10; // extract tens digit
+    if (n2 == 0) {
+        panic_print_char_dual(' ');
+    } else {
+        panic_print_char_dual(n2 + '0');
+    }
+    panic_print_char_dual(n1 + '0');
 }
 #endif  // CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
 
@@ -252,15 +297,15 @@ void esp_panic_handler(panic_info_t *info)
       *
       * */
     if (info->reason) {
-        panic_print_str("Guru Meditation Error: Core ");
-        panic_print_dec(info->core);
-        panic_print_str(" panic'ed (");
-        panic_print_str(info->reason);
-        panic_print_str("). ");
+        panic_print_str_dual("Guru Meditation Error: Core ");
+        panic_print_dec_dual(info->core);
+        panic_print_str_dual(" panic'ed (");
+        panic_print_str_dual(info->reason);
+        panic_print_str_dual("). ");
     }
 
     if (info->description) {
-        panic_print_str(info->description);
+        panic_print_str_dual(info->description);
     }
 
     panic_print_str("\r\n");

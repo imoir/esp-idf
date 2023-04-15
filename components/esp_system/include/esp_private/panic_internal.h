@@ -69,6 +69,9 @@ void panic_print_char(char c);
 void panic_print_str(const char *str);
 void panic_print_dec(int d);
 void panic_print_hex(int h);
+void panic_print_str_dual(const char *str);
+void panic_print_dec_dual(int d);
+void panic_print_hex_dual(int h);
 #else
 #define panic_print_char(c)
 #define panic_print_str(str)
